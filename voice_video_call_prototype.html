@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#101114">
+<title>Voice & Video Calling Prototype</title>
+<style>
+:root{color-scheme:dark;--bg:#101114;--panel:#1b1d22;--line:#343741;--gold:#d8b36a;--text:#f6f6f6;--muted:#b7bbc5;--green:#2e9d68;--red:#d94b55}
+*{box-sizing:border-box}
+body{margin:0;background:radial-gradient(circle at top,#242630 0,#101114 48%);font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:var(--text);min-height:100vh;padding:22px 14px}
+main{max-width:720px;margin:0 auto}
+header{text-align:center;margin:10px 0 22px}
+.logo{width:58px;height:58px;border-radius:18px;display:grid;place-items:center;background:var(--gold);color:#171717;font-size:26px;font-weight:900;margin:0 auto 12px}
+h1{font-size:clamp(25px,6vw,36px);margin:0 0 8px;letter-spacing:-.7px}
+header p,.muted{color:var(--muted);line-height:1.5}
+.card{background:rgba(27,29,34,.96);border:1px solid var(--line);border-radius:18px;padding:18px;margin:14px 0;box-shadow:0 12px 35px #0002}
+h2{font-size:17px;margin:0 0 14px}
+label{display:block;color:var(--muted);font-size:13px;margin:12px 0 6px}
+input{width:100%;padding:13px 12px;border:1px solid #464a55;border-radius:11px;background:#111318;color:white;font-size:15px}
+button{border:0;border-radius:11px;padding:12px 14px;font-weight:700;font-size:14px;cursor:pointer}
+button:disabled{opacity:.45;cursor:not-allowed}
+.primary{background:var(--gold);color:#151515}
+.secondary{background:#30333b;color:white;border:1px solid #454954}
+.green{background:var(--green);color:white}
+.red{background:var(--red);color:white}
+.row{display:flex;gap:9px;flex-wrap:wrap;margin-top:12px}
+.row button{flex:1;min-width:115px}
+.status{background:#111318;border:1px solid var(--line);padding:11px 12px;border-radius:10px;color:#e7d6aa;font-size:13px;line-height:1.45;overflow-wrap:anywhere}
+.videos{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+.videoWrap{position:relative;background:#08090b;border:1px solid var(--line);border-radius:13px;overflow:hidden;min-height:150px;aspect-ratio:4/3}
+video{width:100%;height:100%;object-fit:cover;position:absolute;inset:0;background:#08090b}
+.videoLabel{position:absolute;z-index:2;left:8px;bottom:8px;background:#000a;padding:5px 8px;border-radius:7px;font-size:11px}
+#incoming{display:none;border:1px solid #8d713a;background:#2a2418;padding:14px;border-radius:12px;margin-top:12px}
+.small{font-size:12px;color:var(--muted);line-height:1.55}
+footer{text-align:center;color:#8e929d;font-size:12px;margin:22px 0}
+@media(max-width:460px){.videos{grid-template-columns:1fr}.videoWrap{min-height:210px}.card{padding:15px}}
+</style>
+</head>
+<body>
+<main>
+<header>
+  <div class="logo">V</div>
+  <h1>Voice & Video</h1>
+  <p>A first-test prototype for real app-to-app calls over the internet.</p>
+</header>
+
+<section class="card">
+  <h2>1. Your connection</h2>
+  <div class="status" id="status">Connecting to the calling service…</div>
+  <label for="myId">Your temporary call ID</label>
+  <input id="myId" readonly placeholder="Waiting for an ID…">
+  <div class="row">
+    <button class="secondary" id="copyBtn" disabled>Copy my ID</button>
+    <button class="secondary" id="newIdBtn">Reconnect / new ID</button>
+  </div>
+  <p class="small">Share this ID only with the person you want to test with. IDs are temporary and are not user accounts.</p>
+</section>
+
+<section class="card">
+  <h2>2. Call another person</h2>
+  <label for="targetId">Their call ID</label>
+  <input id="targetId" autocomplete="off" placeholder="Paste the other person's ID">
+  <div class="row">
+    <button class="green" id="voiceBtn" disabled>☎ Voice call</button>
+    <button class="primary" id="videoBtn" disabled>▣ Video call</button>
+  </div>
+  <div id="incoming">
+    <strong id="incomingText">Incoming call</strong>
+    <div class="row">
+      <button class="green" id="answerBtn">Answer</button>
+      <button class="red" id="declineBtn">Decline</button>
+    </div>
+  </div>
+</section>
+
+<section class="card">
+  <h2>3. Call screen</h2>
+  <div class="videos">
+    <div class="videoWrap"><video id="remoteVideo" autoplay playsinline></video><span class="videoLabel">Other person</span></div>
+    <div class="videoWrap"><video id="localVideo" autoplay playsinline muted></video><span class="videoLabel">You</span></div>
+  </div>
+  <div class="row">
+    <button class="secondary" id="muteBtn" disabled>Mute mic</button>
+    <button class="secondary" id="cameraBtn" disabled>Turn camera off</button>
+    <button class="red" id="hangupBtn" disabled>End call</button>
+  </div>
+  <p class="small">For voice calls, the video panels may remain black. The remote person must answer an incoming call before media connects.</p>
+</section>
+
+<section class="card">
+  <h2>Read before testing</h2>
+  <p class="small">• Both phones need internet for this version. Calls may use mobile data.<br>
+  • Allow camera and microphone access when asked.<br>
+  • Open this page over HTTPS (for example, through GitHub Pages). Browser camera/microphone access requires a secure context.<br>
+  • This prototype uses a public signalling service and has no account system, call notifications, or production-grade TURN relay. It is for testing, not private or dependable everyday calls.<br>
+  • Don't share call IDs publicly. Close the page when finished.</p>
+</section>
+<footer>Prototype only · Not an emergency-calling service</footer>
+</main>
+
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const statusEl = $("status");
+  const myIdEl = $("myId");
+  const targetEl = $("targetId");
+  const incomingEl = $("incoming");
+  const incomingText = $("incomingText");
+  const remoteVideo = $("remoteVideo");
+  const localVideo = $("localVideo");
+  const voiceBtn = $("voiceBtn");
+  const videoBtn = $("videoBtn");
+  const copyBtn = $("copyBtn");
+  const answerBtn = $("answerBtn");
+  const declineBtn = $("declineBtn");
+  const muteBtn = $("muteBtn");
+  const cameraBtn = $("cameraBtn");
+  const hangupBtn = $("hangupBtn");
+
+  let peer = null;
+  let currentCall = null;
+  let localStream = null;
+  let pendingCall = null;
+  let activeMode = "video";
+  let micMuted = false;
+  let cameraOff = false;
+
+  function setStatus(message) { statusEl.textContent = message; }
+
+  function setCallControls(active) {
+    muteBtn.disabled = !active || !localStream || !localStream.getAudioTracks().length;
+    cameraBtn.disabled = !active || !localStream || !localStream.getVideoTracks().length;
+    hangupBtn.disabled = !active;
+  }
+
+  function stopLocalStream() {
+    if (localStream) localStream.getTracks().forEach(track => track.stop());
+    localStream = null;
+    localVideo.srcObject = null;
+    micMuted = false;
+    cameraOff = false;
+    muteBtn.textContent = "Mute mic";
+    cameraBtn.textContent = "Turn camera off";
+    setCallControls(false);
+  }
+
+  function resetCallUi() {
+    currentCall = null;
+    pendingCall = null;
+    incomingEl.style.display = "none";
+    remoteVideo.srcObject = null;
+    stopLocalStream();
+  }
+
+  async function getMedia(mode) {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      throw new Error("Camera/microphone access is unavailable. Open this page using HTTPS in a modern browser.");
+    }
+    return navigator.mediaDevices.getUserMedia({
+      audio: true,
+      video: mode === "video" ? { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } } : false
+    });
+  }
+
+  function attachCall(call) {
+    currentCall = call;
+    call.on("stream", stream => {
+      remoteVideo.srcObject = stream;
+      remoteVideo.play().catch(() => {});
+      setStatus("Connected. You can now talk" + (activeMode === "video" ? " and see each other." : "."));
+      setCallControls(true);
+    });
+    call.on("close", () => {
+      setStatus("Call ended.");
+      resetCallUi();
+    });
+    call.on("error", err => {
+      setStatus("Call error: " + (err && err.message ? err.message : "connection failed"));
+      resetCallUi();
+    });
+  }
+
+  async function startCall(mode) {
+    const targetId = targetEl.value.trim();
+    if (!peer || peer.destroyed || !peer.open) {
+      setStatus("Your connection is not ready yet. Wait for your ID, then try again.");
+      return;
+    }
+    if (!targetId) {
+      setStatus("Enter the other person's call ID first.");
+      return;
+    }
+    if (targetId === peer.id) {
+      setStatus("You cannot call your own ID. Use a second phone.");
+      return;
+    }
+    if (currentCall || pendingCall) {
+      setStatus("Finish or decline the current call first.");
+      return;
+    }
+
+    try {
+      activeMode = mode;
+      setStatus("Requesting " + (mode === "video" ? "camera and microphone" : "microphone") + " permission…");
+      localStream = await getMedia(mode);
+      localVideo.srcObject = localStream;
+      localVideo.play().catch(() => {});
+      setStatus("Calling " + targetId + "… Ask the other person to answer.");
+      const call = peer.call(targetId, localStream, { metadata: { mode } });
+      if (!call) throw new Error("The calling service could not start the call.");
+      attachCall(call);
+      call.on("error", err => setStatus("Call error: " + (err && err.message ? err.message : "connection failed")));
+      setCallControls(true);
+    } catch (err) {
+      stopLocalStream();
+      setStatus("Could not start call: " + (err && err.message ? err.message : String(err)));
+    }
+  }
+
+  peer = new Peer();
+  peer.on("open", id => {
+    myIdEl.value = id;
+    copyBtn.disabled = false;
+    voiceBtn.disabled = false;
+    videoBtn.disabled = false;
+    setStatus("Ready. Share your ID with the person you want to call.");
+  });
+  peer.on("error", err => {
+    setStatus("Connection service error: " + (err && err.message ? err.message : String(err)) + ". Try reconnecting.");
+  });
+  peer.on("disconnected", () => {
+    setStatus("Disconnected from the calling service. Tap reconnect to try again.");
+  });
+  peer.on("call", call => {
+    if (currentCall || pendingCall) {
+      call.close();
+      return;
+    }
+    pendingCall = call;
+    const mode = call.metadata && call.metadata.mode === "audio" ? "voice" : "video";
+    incomingText.textContent = "Incoming " + mode + " call from " + call.peer;
+    incomingEl.style.display = "block";
+    setStatus("Incoming call. Answer or decline.");
+  });
+
+  answerBtn.addEventListener("click", async () => {
+    if (!pendingCall) return;
+    const call = pendingCall;
+    activeMode = call.metadata && call.metadata.mode === "audio" ? "audio" : "video";
+    answerBtn.disabled = true;
+    try {
+      setStatus("Requesting permission to answer…");
+      localStream = await getMedia(activeMode);
+      localVideo.srcObject = localStream;
+      localVideo.play().catch(() => {});
+      call.answer(localStream);
+      incomingEl.style.display = "none";
+      attachCall(call);
+      setCallControls(true);
+      setStatus("Call answered. Connecting media…");
+    } catch (err) {
+      call.close();
+      resetCallUi();
+      setStatus("Could not answer: " + (err && err.message ? err.message : String(err)));
+    } finally {
+      answerBtn.disabled = false;
+    }
+  });
+
+  declineBtn.addEventListener("click", () => {
+    if (pendingCall) pendingCall.close();
+    resetCallUi();
+    setStatus("Call declined.");
+  });
+
+  voiceBtn.addEventListener("click", () => startCall("audio"));
+  videoBtn.addEventListener("click", () => startCall("video"));
+
+  copyBtn.addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText(myIdEl.value);
+      setStatus("Your ID was copied. Send it privately to your test partner.");
+    } catch (_) {
+      myIdEl.select();
+      setStatus("Copy wasn't available. Select and copy your ID manually.");
+    }
+  });
+
+  muteBtn.addEventListener("click", () => {
+    if (!localStream) return;
+    const tracks = localStream.getAudioTracks();
+    if (!tracks.length) return;
+    micMuted = !micMuted;
+    tracks.forEach(track => track.enabled = !micMuted);
+    muteBtn.textContent = micMuted ? "Unmute mic" : "Mute mic";
+  });
+
+  cameraBtn.addEventListener("click", () => {
+    if (!localStream) return;
+    const tracks = localStream.getVideoTracks();
+    if (!tracks.length) return;
+    cameraOff = !cameraOff;
+    tracks.forEach(track => track.enabled = !cameraOff);
+    cameraBtn.textContent = cameraOff ? "Turn camera on" : "Turn camera off";
+  });
+
+  hangupBtn.addEventListener("click", () => {
+    if (currentCall) currentCall.close();
+    resetCallUi();
+    setStatus("You ended the call.");
+  });
+
+  $("newIdBtn").addEventListener("click", () => {
+    setStatus("Reconnecting… your current temporary ID will change.");
+    if (peer && !peer.destroyed) peer.destroy();
+    resetCallUi();
+    peer = new Peer();
+    peer.on("open", id => {
+      myIdEl.value = id;
+      copyBtn.disabled = false;
+      voiceBtn.disabled = false;
+      videoBtn.disabled = false;
+      setStatus("Ready. Share your new ID with your test partner.");
+    });
+    peer.on("error", err => setStatus("Connection service error: " + (err && err.message ? err.message : String(err))));
+    peer.on("disconnected", () => setStatus("Disconnected from the calling service. Try reconnecting."));
+    peer.on("call", call => {
+      if (currentCall || pendingCall) { call.close(); return; }
+      pendingCall = call;
+      const mode = call.metadata && call.metadata.mode === "audio" ? "voice" : "video";
+      incomingText.textContent = "Incoming " + mode + " call from " + call.peer;
+      incomingEl.style.display = "block";
+      setStatus("Incoming call. Answer or decline.");
+    });
+  });
+
+  window.addEventListener("beforeunload", () => {
+    if (currentCall) currentCall.close();
+    stopLocalStream();
+    if (peer && !peer.destroyed) peer.destroy();
+  });
+})();
+</script>
+</body>
+</html>
